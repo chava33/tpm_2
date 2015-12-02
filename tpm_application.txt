@@ -1,0 +1,9 @@
+Under endorsement hierarchie
+
+Create a platform primary storage key (only RSA?) (paswd=pps is used in below)
+-->Create a storage key
+-->Create an unrestricted signing key
+-->Create a restricted signing key
+-->Create an RSA decryption key
+-->Create a symmetric cipher key
+-->Create a sha256 keyed hash key

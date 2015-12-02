@@ -1,0 +1,239 @@
+#!/bin/bash
+#
+echo "# path to me --------------->  ${0}     "
+echo "# my name ------------------>  ${0##*/} "
+#################################################################################
+#										#
+#			TPM2 regression test					#
+#			     Written by Ken Goldman				#
+#		       IBM Thomas J. Watson Research Center			#
+#		$Id: testhierarchy.sh 321 2015-06-04 19:14:39Z kgoldman $	#
+#										#
+# (c) Copyright IBM Corporation 2015						#
+# 										#
+# All rights reserved.								#
+# 										#
+# Redistribution and use in source and binary forms, with or without		#
+# modification, are permitted provided that the following conditions are	#
+# met:										#
+# 										#
+# Redistributions of source code must retain the above copyright notice,	#
+# this list of conditions and the following disclaimer.				#
+# 										#
+# Redistributions in binary form must reproduce the above copyright		#
+# notice, this list of conditions and the following disclaimer in the		#
+# documentation and/or other materials provided with the distribution.		#
+# 										#
+# Neither the names of the IBM Corporation nor the names of its			#
+# contributors may be used to endorse or promote products derived from		#
+# this software without specific prior written permission.			#
+# 										#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS		#
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT		#
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR		#
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT		#
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,	#
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT		#
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,		#
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY		#
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT		#
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE		#
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.		#
+#										#
+#################################################################################
+
+echo ""
+echo "Hierarchy Change Auth"
+echo ""
+
+echo "Start an HMAC auth session"
+./startauthsession -se h > run.out
+checkSuccess $?
+
+for SESS in "" "-se0 02000000 1"
+do
+
+    echo "Change platform hierarchy auth ${SESS}"
+    ./hierarchychangeauth -hi e -pwdn ppp ${SESS} > run.out
+    checkSuccess $?
+
+    echo "Create a primary storage key - should fail"
+    ./createprimary -hi e -pwdk 111 > run.out
+    checkFailure $?
+
+    echo "Create a primary storage key"
+    ./createprimary -hi e -pwdk 111 -pwdp ppp > run.out
+    checkSuccess $?
+
+    echo "Flush the primary key"
+    ./flushcontext -ha 80000001 > run.out
+    checkSuccess $?
+
+    echo "Change platform hierarchy auth back to null ${SESS}"
+    ./hierarchychangeauth -hi e -pwda ppp ${SESS} > run.out
+    checkSuccess $?
+
+    echo "Create a primary storage key"
+    ./createprimary -pwdk 111 > run.out
+    checkSuccess $?
+
+    echo "Flush the primary key"
+    ./flushcontext -ha 80000001 > run.out
+    checkSuccess $?
+
+done
+
+echo "Flush the auth session"
+./flushcontext -ha 02000000 > run.out
+checkSuccess $?
+
+echo ""
+echo "Hierarchy Change Auth with bind"
+echo ""
+
+echo "Change platform hierarchy auth"
+./hierarchychangeauth -hi e -pwdn ppp > run.out
+checkSuccess $?
+
+echo "Create a primary storage key - should fail"
+./createprimary -hi e -pwdk 111 > run.out
+checkFailure $?
+
+echo "Create a primary storage key"
+./createprimary -hi e -pwdk 111 -pwdp ppp > run.out
+checkSuccess $?
+
+echo "Flush the primary key"
+./flushcontext -ha 80000001 > run.out
+checkSuccess $?
+
+echo "Start an HMAC auth session, bind to platform hierarchy"
+./startauthsession -se h -bi 4000000c -pwdb ppp > run.out
+checkSuccess $?
+
+echo "Change platform hierarchy auth back to null"
+./hierarchychangeauth -hi e -pwda ppp > run.out #-se0 02000000 1 > run.out
+checkSuccess $?
+
+echo "Create a primary storage key"
+./createprimary -pwdk 111 > run.out
+checkSuccess $?
+
+echo "Flush the primary key"
+./flushcontext -ha 80000001 > run.out
+checkSuccess $?
+
+echo "Flush the auth session"
+./flushcontext -ha 02000000 > run.out
+checkSuccess $?
+
+echo ""
+echo "Hierarchy Control"
+echo ""
+
+: <<'END'
+root@bbox:~/Downloads/ibmtss439/utils# ./hierarchycontrol -hi e -he o
+hierarchycontrol: failed, rc 00000124
+TPM_RC_AUTH_TYPE - authorization handle is not correct for command
+END
+
+
+echo "Enable the owner hierarchy"
+./hierarchycontrol -hi e -he o > run.out
+checkSuccess $?
+
+
+echo "Change the platform hierarchy password"
+./hierarchychangeauth -hi e -pwdn ppp > run.out
+checkSuccess $?
+
+echo "Enable the owner hierarchy - no platform hierarchy password, should fail"
+./hierarchycontrol -hi e -he o > run.out
+checkFailure $?
+
+echo "Enable the owner hierarchy using platform hierarchy password"
+./hierarchycontrol -hi e -he o -pwda ppp > run.out
+checkSuccess $?
+
+echo "Create a primary key in the owner hierarchy - bad password, should fail"
+./createprimary -hi o -pwdp xxx > run.out
+checkFailure $?
+
+echo "Create a primary key in the owner hierarchy"
+./createprimary -hi o > run.out
+checkSuccess $?
+
+echo "Disable the owner hierarchy using platform hierarchy password"
+./hierarchycontrol -hi e -he o -pwda ppp -state 0 > run.out
+checkSuccess $?
+
+echo "Create a primary key in the owner hierarchy, disabled, should fail"
+./createprimary -hi o > run.out
+checkFailure $?
+
+echo "Enable the owner hierarchy using platform hierarchy password"
+./hierarchycontrol -hi e -he o -pwda ppp -state 1 > run.out
+checkSuccess $?
+
+echo "Create a primary key in the owner hierarchy"
+./createprimary -hi o > run.out
+checkSuccess $?
+
+echo "Remove the platform hierarchy password"
+./hierarchychangeauth -hi e -pwda ppp > run.out
+checkSuccess $?
+
+echo "Flush the primary key in the owner hierarchy"
+./flushcontext -ha 80000001 > run.out
+checkSuccess $?
+
+echo ""
+echo "Clear"
+echo ""
+
+echo "Set storage hierarchy auth"
+./hierarchychangeauth -hi o -pwdn ooo > run.out
+checkSuccess $?
+
+echo "Create a primary key - storage hierarchy"
+./createprimary -hi o -pwdp ooo > run.out
+checkSuccess $?
+
+echo "Read the public part"
+./readpublic -ho 80000001  > run.out
+checkSuccess $?
+
+echo "ClearControl disable"
+./clearcontrol -hi e -state 1 > run.out
+checkSuccess $?
+
+echo "Clear - should fail"
+./clear -hi e > run.out
+checkFailure $?
+
+echo "ClearControl enable"
+./clearcontrol -hi e -state 0 > run.out
+checkSuccess $?
+
+echo "Clear"
+./clear -hi e > run.out
+checkSuccess $?
+
+echo "Read the public part - should fail"
+./readpublic -ho 80000001  > run.out
+checkFailure $?
+
+echo "Create a primary key - old owner password should fail"
+./createprimary -hi o -pwdp ooo > run.out
+checkFailure $?
+
+echo "Create a primary key"
+./createprimary -hi o > run.out
+checkSuccess $?
+
+echo "Flush the primary key"
+./flushcontext -ha 80000001 > run.out
+checkSuccess $?
+
+# getcapability  -cap 1 -pr 80000000
+# getcapability  -cap 1 -pr 02000000

@@ -18,56 +18,7 @@ TPM2.0-tools working commands
 bbox@bbox:~$ resourcemgr
 bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_listpcrs
 bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_getrandom -s 20 -o random.out
-
------------------take ownership-----------------------------------------
-./tpm2_takeownership -o pps
-./tpm2_takeownership -o bbox -O pps
-./tpm2_takeownership -o pps -e pps -l pps -O bbox
-./tpm2_getpubek -e pps -o pps -P passwd -H 0x81010001 -g 0x01 -f ek.pub
-
------------------NV-----------------------------------------------------
- ./tpm2_nvlist 
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_nvdefine -x 0x1500016 -a 0x40000001 -s 32 -t 0x2000A -P pps
-Success to define NV area at index 0x1500016 (22020118).
-
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ touch nv.data
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ echo hello >> nv.data 
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ cat nv.data 
-hello
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_nvwrite -x 0x1500016 -a 0x40000001 -P pps -f nv.data 
-
-The data(size=6) to be written:
-68	65	6c	6c	6f	0a	
-
-Success to write NV area at index 0x1500016 (22020118).
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_nvread -x 0x1500016 -a 0x40000001 -P pps -s 32 -o 0
-
-The size of data:32
- 68  65  6c  6c  6f  0a  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00  00 
-
-
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_nvrelease -x 0x1500016 -a 0x40000001 -P pps
-Success to release NV area at index 0x1500016 (22020118).
------------------Keys--------------------------------------------------
-
-
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_getpubek -e pps -o pps -P passwd -H 0x81010001 -g 0x01 -f ek.pub
-EK create succ.. Handle: 0x80000004
-......EvictControl:Make EK persistent Error. TPM Error:0x14c......
-
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_getpubek -e pps -o pps -P passwd -H 0x81010001 -g 0x01 -f ek.pub
-EK create succ.. Handle: 0x80000003
-......EvictControl:Make EK persistent Error. TPM Error:0x14c......
-
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_akparse -f ./ak.data -k ./ak.key
-The algorithm type(0x326d) is not supported
-
-bbox@bbox:~/Downloads/tpm2.0-tools/sapi-tools$ ./tpm2_createprimary -A e -P pps  -K def456 -g 0x000B -G 0x0008
-nameAlg = 0x000b
-type = 0x0008
-CreatePrimary Failed ! ErrorCode: 0x101
-
-_________________________________________________________________________________________________________________________
+___________________________________________________________________________________________________
  
 
 cat /sys/class/misc/tpm0/device/pcrs
